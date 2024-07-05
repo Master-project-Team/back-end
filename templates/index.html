@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Application</title>
+    <style>
+        #chat-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            overflow-y: auto;
+            height: 400px;
+        }
+        .message {
+            margin: 10px 0;
+        }
+        .user-message {
+            text-align: right;
+            color: blue;
+        }
+        .bot-message {
+            text-align: left;
+            color: green;
+        }
+        .conversations-list {
+            margin-bottom: 20px;
+        }
+        .conversation-link {
+            display: block;
+            margin: 5px 0;
+            text-decoration: none;
+            color: blue;
+        }
+        .chat-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bienvenue dans l'application de chat</h1>
+    <div class="conversations-list">
+        <h3>Conversations:</h3>
+        {% for conversation in conversations %}
+            <a href="#" class="conversation-link" data-id="{{ conversation['conversation_id'] }}">Conversation {{ conversation['conversation_id'] }}</a>
+        {% endfor %}
+    </div>
+    <div id="chat-container"></div>
+    <form id="chat-form">
+        <input type="text" id="message" placeholder="Entrez votre message">
+        <input type="hidden" id="conversation_id" value="">
+        <div class="chat-controls">
+            <button type="submit">Envoyer</button>
+            <button type="button" onclick="startNewConversation()">Nouvelle Conversation</button>
+        </div>
+    </form>
+
+    <script>
+        function startNewConversation() {
+            fetch('/new_conversation', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('conversation_id').value = data.conversation_id;
+                    document.getElementById('chat-container').innerHTML = '';
+                    loadConversationLinks();
+                });
+        }
+    
+        function loadConversation(conversation_id) {
+            fetch(`/conversation/${conversation_id}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('chat-container').innerHTML = '';
+                    data.forEach(message => {
+                        const userMessageDiv = document.createElement('div');
+                        userMessageDiv.className = 'message user-message';
+                        userMessageDiv.textContent = message.user_message;
+                        document.getElementById('chat-container').appendChild(userMessageDiv);
+    
+                        const botMessageDiv = document.createElement('div');
+                        botMessageDiv.className = 'message bot-message';
+                        botMessageDiv.textContent = message.bot_response;
+                        document.getElementById('chat-container').appendChild(botMessageDiv);
+                    });
+                    document.getElementById('conversation_id').value = conversation_id;
+                });
+        }
+
+        function loadConversationLinks() {
+            fetch('/conversation_links')
+                .then(response => response.json())
+                .then(conversations => {
+                    const listContainer = document.querySelector('.conversations-list');
+                    listContainer.innerHTML = '<h3>Conversations:</h3>';
+                    conversations.forEach(conversation_id => {
+                        const link = document.createElement('a');
+                        link.href = "#";
+                        link.className = "conversation-link";
+                        link.textContent = `Conversation ${conversation_id}`;
+                        link.dataset.id = conversation_id;
+                        link.addEventListener('click', function() {
+                            loadConversation(conversation_id);
+                        });
+                        listContainer.appendChild(link);
+                    });
+                });
+        }
+    
+        document.addEventListener('DOMContentLoaded', loadConversationLinks);
+
+        document.getElementById('chat-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const message = document.getElementById('message').value;
+            const conversation_id = document.getElementById('conversation_id').value;
+            if (message.trim() === '') return;
+    
+            const userMessageDiv = document.createElement('div');
+            userMessageDiv.className = 'message user-message';
+            userMessageDiv.textContent = message;
+            document.getElementById('chat-container').appendChild(userMessageDiv);
+    
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: message, conversation_id: conversation_id })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const botMessageDiv = document.createElement('div');
+                botMessageDiv.className = 'message bot-message';
+                botMessageDiv.textContent = data.bot_response;
+                document.getElementById('chat-container').appendChild(botMessageDiv);
+                document.getElementById('message').value = '';
+                document.getElementById('conversation_id').value = data.conversation_id;
+            });
+        });
+    </script>    
+</body>
+</html>

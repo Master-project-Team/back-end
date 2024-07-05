@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Conversation {{ conversation_id }}</title>
+    <style>
+        #chat-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            overflow-y: auto;
+            height: 400px;
+        }
+        .message {
+            margin: 10px 0;
+        }
+        .user-message {
+            text-align: right;
+            color: blue;
+        }
+        .bot-message {
+            text-align: left;
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <h1>Conversation {{ conversation_id }}</h1>
+    <div id="chat-container">
+        {% for message in messages %}
+            <div class="message {% if message['user_message'] %}user-message{% else %}bot-message{% endif %}">
+                {{ message['user_message'] or message['bot_response'] }}
+            </div>
+        {% endfor %}
+    </div>
+    <form id="chat-form">
+        <input type="text" id="message" placeholder="Entrez votre message">
+        <button type="submit">Envoyer</button>
+        <input type="hidden" id="conversation_id" value="{{ conversation_id }}">
+    </form>
+
+    <script>
+        document.getElementById('chat-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const message = document.getElementById('message').value;
+            const conversation_id = document.getElementById('conversation_id').value;
+            if (message.trim() === '') return;
+
+            const userMessageDiv = document.createElement('div');
+            userMessageDiv.className = 'message user-message';
+            userMessageDiv.textContent = message;
+            document.getElementById('chat-container').appendChild(userMessageDiv);
+
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: message, conversation_id: conversation_id })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const botMessageDiv = document.createElement('div');
+                botMessageDiv.className = 'message bot-message';
+                botMessageDiv.textContent = data.bot_response;
+                document.getElementById('chat-container').appendChild(botMessageDiv);
+                document.getElementById('message').value = '';
+            });
+        });
+    </script>
+</body>
+</html>
